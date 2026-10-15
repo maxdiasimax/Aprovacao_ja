@@ -1,0 +1,66 @@
+<%- include('partials/header') %>
+
+<div style="text-align: center; margin-bottom: 20px;">
+    <span style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; letter-spacing: 1px;">FlashCards - Revisão Ativa</span>
+</div>
+
+<% if (questao) { %>
+    <div class="flashcard-container">
+        <div class="flashcard" id="card">
+            <div class="flashcard-front">
+                <div style="margin-bottom: 20px; font-size: 0.8rem; color: var(--secondary-color); font-weight: 600;">
+                    <%= questao.disciplina %> | <%= questao.banca %> (<%= questao.ano %>)
+                </div>
+                <h3 style="font-size: 1.25rem;"><%= questao.pergunta %></h3>
+                <p style="margin-top: 40px; font-size: 0.8rem; color: var(--text-muted);">Toque para ver a resposta</p>
+            </div>
+            <div class="flashcard-back">
+                <h4 style="margin-bottom: 15px; color: var(--primary-color);">Gabarito / Explicação</h4>
+                <div style="text-align: left; background: #f1f5f9; padding: 20px; border-radius: 12px; font-size: 0.95rem; width: 100%; border: 1px solid var(--border);">
+                    <%= questao.resposta_detalhada %>
+                </div>
+                
+                <div class="feedback-buttons">
+                    <button onclick="sendFeedback('<%= questao.id %>', 'Errei')" class="btn btn-danger">Errei</button>
+                    <button onclick="sendFeedback('<%= questao.id %>', 'Revisar')" class="btn btn-warning">Revisar</button>
+                    <button onclick="sendFeedback('<%= questao.id %>', 'Acertado')" class="btn btn-success">Acertei</button>
+                </div>
+            </div>
+        </div>
+    </div>
+<% } else { %>
+    <div class="card" style="text-align: center; padding: 60px;">
+        <h3>Parabéns! 🎉</h3>
+        <p style="color: var(--text-muted); margin-top: 10px;">Você revisou todos os cards por hoje.</p>
+        <a href="/dashboard" class="btn btn-primary" style="margin-top: 20px; display: inline-block; text-decoration: none;">Voltar ao Início</a>
+    </div>
+<% } %>
+
+<script>
+    const card = document.getElementById('card');
+    if (card) {
+        card.addEventListener('click', function(e) {
+            // Impedir que clique nos botões vire o card de novo
+            if (e.target.tagName !== 'BUTTON') {
+                this.classList.toggle('flipped');
+            }
+        });
+    }
+
+    async function sendFeedback(id, feedback) {
+        try {
+            const response = await fetch('/estudo/feedback', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ questao_id: id, feedback: feedback })
+            });
+            if (response.ok) {
+                window.location.reload();
+            }
+        } catch (error) {
+            console.error('Erro ao enviar feedback:', error);
+        }
+    }
+</script>
+
+<%- include('partials/footer') %>

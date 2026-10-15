@@ -1,0 +1,179 @@
+<%- include('partials/header') %>
+
+<div style="text-align: center; margin-bottom: 30px;">
+    <span style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; letter-spacing: 1px;">Prática de Questões</span>
+</div>
+
+<!-- Filtros -->
+<div class="card" style="margin-bottom: 24px; padding: 15px;">
+    <form action="/questoes" method="GET" style="display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end;">
+        <div style="flex: 1; min-width: 150px;">
+            <label style="font-size: 0.75rem; font-weight: bold; color: var(--text-muted);">Disciplina</label>
+            <select name="disciplina" class="form-control" style="padding: 8px;">
+                <option value="">Todas</option>
+                <% disciplinas.forEach(d => { %>
+                    <option value="<%= d.disciplina %>" <%= filtros.disciplina === d.disciplina ? 'selected' : '' %>><%= d.disciplina %></option>
+                <% }) %>
+            </select>
+        </div>
+        <div style="flex: 1; min-width: 150px;">
+            <label style="font-size: 0.75rem; font-weight: bold; color: var(--text-muted);">Banca</label>
+            <select name="banca" class="form-control" style="padding: 8px;">
+                <option value="">Todas</option>
+                <% bancas.forEach(b => { %>
+                    <option value="<%= b.banca %>" <%= filtros.banca === b.banca ? 'selected' : '' %>><%= b.banca %></option>
+                <% }) %>
+            </select>
+        </div>
+        <div style="flex: 1; min-width: 100px;">
+            <label style="font-size: 0.75rem; font-weight: bold; color: var(--text-muted);">Ano</label>
+            <select name="ano" class="form-control" style="padding: 8px;">
+                <option value="">Todos</option>
+                <% anos.forEach(a => { %>
+                    <option value="<%= a.ano %>" <%= filtros.ano == a.ano ? 'selected' : '' %>><%= a.ano %></option>
+                <% }) %>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary" style="padding: 10px 20px;">Filtrar</button>
+    </form>
+</div>
+
+<% if (questao) { %>
+    <div class="card">
+        <div style="margin-bottom: 20px; font-size: 0.8rem; color: var(--secondary-color); font-weight: 600;">
+            <%= questao.disciplina %> | <%= questao.banca %> (<%= questao.ano %>)
+        </div>
+        
+        <div style="font-size: 1.1rem; margin-bottom: 24px; line-height: 1.6;">
+            <%= questao.pergunta %>
+        </div>
+
+        <div id="opcoes-container" style="display: flex; flex-direction: column; gap: 12px;">
+            <% if (questao.opcoes) { %>
+                <% Object.entries(questao.opcoes).forEach(([label, text]) => { %>
+                    <% if (text) { %>
+                        <div class="opcao" onclick="checkAnswer('<%= label %>')" data-label="<%= label %>" style="
+                            padding: 16px; 
+                            border: 1px solid var(--border); 
+                            border-radius: 10px; 
+                            cursor: pointer; 
+                            transition: all 0.2s;
+                            display: flex;
+                            gap: 12px;
+                            align-items: flex-start;
+                        ">
+                            <span style="
+                                background: #f1f5f9; 
+                                width: 28px; 
+                                height: 28px; 
+                                display: flex; 
+                                align-items: center; 
+                                justify-content: center; 
+                                border-radius: 50%; 
+                                font-weight: bold; 
+                                font-size: 0.8rem;
+                                flex-shrink: 0;
+                            "><%= label %></span>
+                            <div style="font-size: 0.95rem;"><%= text %></div>
+                        </div>
+                    <% } %>
+                <% }) %>
+            <% } %>
+        </div>
+
+        <div id="feedback-container" style="display: none; margin-top: 30px; animation: slideUp 0.3s ease;">
+            <div id="feedback-banner" style="padding: 15px; border-radius: 10px; margin-bottom: 20px; font-weight: 700; text-align: center;">
+            </div>
+            
+            <div style="background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid var(--border);">
+                <h4 style="margin-bottom: 12px; color: var(--primary-color);">Explicação</h4>
+                <div style="font-size: 0.9rem; line-height: 1.5; color: var(--text-main);">
+                    <%= questao.resposta_detalhada %>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 30px;">
+                <button onclick="window.location.reload()" class="btn btn-primary" style="padding: 12px 30px;">Próxima Questão</button>
+            </div>
+        </div>
+    </div>
+<% } else { %>
+    <div class="card" style="text-align: center; padding: 60px;">
+        <h3>Nenhuma questão encontrada 😕</h3>
+        <p style="color: var(--text-muted); margin-top: 10px;">Tente ajustar seus filtros ou cadastre novas questões.</p>
+        <a href="/questoes" class="btn btn-primary" style="margin-top: 20px; display: inline-block; text-decoration: none;">Limpar Filtros</a>
+    </div>
+<% } %>
+
+<style>
+    .opcao:hover {
+        background-color: #f1f5f9;
+        border-color: var(--secondary-color);
+    }
+    .opcao.selected {
+        border-color: var(--primary-color);
+        background-color: #eff6ff;
+    }
+    .opcao.correct {
+        border-color: var(--success);
+        background-color: #ecfdf5;
+    }
+    .opcao.wrong {
+        border-color: var(--danger);
+        background-color: #fef2f2;
+    }
+    @keyframes slideUp {
+        from { transform: translateY(20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+</style>
+
+<script>
+    let answered = false;
+    const correctLabel = '<%= questao ? questao.resposta_correta : "" %>';
+
+    async function checkAnswer(label) {
+        if (answered) return;
+        answered = true;
+
+        const container = document.getElementById('opcoes-container');
+        const options = container.querySelectorAll('.opcao');
+        const feedbackContainer = document.getElementById('feedback-container');
+        const feedbackBanner = document.getElementById('feedback-banner');
+
+        options.forEach(opt => {
+            const optLabel = opt.getAttribute('data-label');
+            if (optLabel === correctLabel) {
+                opt.classList.add('correct');
+            } else if (optLabel === label) {
+                opt.classList.add('wrong');
+            }
+            opt.style.cursor = 'default';
+        });
+
+        const isCorrect = label === correctLabel;
+        
+        feedbackBanner.innerText = isCorrect ? '✨ VOCÊ ACERTOU!' : '❌ NÃO FOI DESSA VEZ';
+        feedbackBanner.style.backgroundColor = isCorrect ? '#ecfdf5' : '#fef2f2';
+        feedbackBanner.style.color = isCorrect ? 'var(--success)' : 'var(--danger)';
+        feedbackBanner.style.border = `1px solid ${isCorrect ? 'var(--success)' : 'var(--danger)'}`;
+        
+        feedbackContainer.style.display = 'block';
+
+        // Enviar feedback para o servidor
+        try {
+            await fetch('/estudo/feedback', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    questao_id: '<%= questao ? questao.id : "" %>', 
+                    feedback: isCorrect ? 'Acertado' : 'Errei' 
+                })
+            });
+        } catch (error) {
+            console.error('Erro ao salvar progresso:', error);
+        }
+    }
+</script>
+
+<%- include('partials/footer') %>

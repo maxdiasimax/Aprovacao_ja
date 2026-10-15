@@ -1,0 +1,165 @@
+<%- include('partials/header') %> <% const percentComplete = stats.total > 0 ?
+(stats.acertos / stats.total) * 100 : 0; %>
+
+<div style="margin-bottom: 30px">
+  <h2>Bem-vindo, <%= user.nome %>!</h2>
+  <p style="color: var(--text-muted)">Aqui está o resumo do seu desempenho.</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div class="metric-grid">
+  <div class="card metric-card">
+    <div class="metric-value"><%= stats.total %></div>
+    <div class="metric-label">Questões Respondidas</div>
+  </div>
+  <div class="card metric-card">
+    <div class="metric-value"><%= percentComplete.toFixed(1) %>%</div>
+    <div class="metric-label">Taxa de Acerto Global</div>
+  </div>
+  <div class="card metric-card">
+    <div class="metric-value"><%= stats.acertos %></div>
+    <div class="metric-label">Total de Acertos</div>
+  </div>
+</div>
+
+<div
+  style="
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 20px;
+  "
+>
+  <!-- Desempenho por Disciplina -->
+  <div class="card">
+    <h3>Desempenho por Disciplina</h3>
+    <div style="height: 300px">
+      <canvas id="disciplinaChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Atividade Recente -->
+  <div class="card">
+    <h3>Atividade Recente (Últimos 7 dias)</h3>
+    <div style="height: 300px">
+      <canvas id="activityChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+      // Dados vindos do Backend (com fallback)
+      const disciplinasData = <%- (typeof disciplinas !== 'undefined' && disciplinas) ? JSON.stringify(disciplinas) : '[]' %>;
+      const activityData = <%- (typeof activity !== 'undefined' && activity) ? JSON.stringify(activity) : '[]' %>;
+
+      // --- Gráfico de Disciplinas ---
+      const labelsDisp = disciplinasData.map(d => d.disciplina);
+      const dataTotal = disciplinasData.map(d => d.total);
+      const dataAcertos = disciplinasData.map(d => d.acertos);
+
+      const ctxDisp = document.getElementById('disciplinaChart').getContext('2d');
+      new Chart(ctxDisp, {
+          type: 'bar',
+          data: {
+              labels: labelsDisp,
+              datasets: [
+                  {
+                      label: 'Acertos',
+                      data: dataAcertos,
+                      backgroundColor: '#10b981',
+                      borderRadius: 4
+                  },
+                  {
+                      label: 'Erros/Revisar',
+                      data: dataTotal.map((t, i) => t - dataAcertos[i]),
+                      backgroundColor: '#fbbf24',
+                      borderRadius: 4
+                  }
+              ]
+          },
+          options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                  x: { stacked: true },
+                  y: { stacked: true, beginAtZero: true }
+              }
+          }
+      });
+
+      // --- Gráfico de Atividade ---
+      // Preencher dias vazios se necessário, para este MVP usamos o que vem do banco
+      const labelsActivity = activityData.map(a => {
+          const date = new Date(a.data);
+          return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+      });
+      const dataActivity = activityData.map(a => a.count);
+
+      const ctxActivity = document.getElementById('activityChart').getContext('2d');
+      new Chart(ctxActivity, {
+          type: 'line',
+          data: {
+              labels: labelsActivity,
+              datasets: [{
+                  label: 'Questões Estudadas',
+                  data: dataActivity,
+                  borderColor: '#2563eb',
+                  backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                  tension: 0.4,
+                  fill: true
+              }]
+          },
+          options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                  y: { beginAtZero: true, ticks: { stepSize: 1 } }
+              }
+          }
+      });
+  });
+</script>
+
+<div
+  style="
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-top: 40px;
+    flex-wrap: wrap;
+  "
+>
+  <a
+    href="/flashcards"
+    class="btn btn-primary"
+    style="
+      padding: 18px 36px;
+      border-radius: 50px;
+      text-decoration: none;
+      font-size: 1.1rem;
+      box-shadow: 0 10px 15px -3px rgba(0, 51, 102, 0.3);
+      min-width: 250px;
+    "
+  >
+    ⚡ Revisar FlashCards
+  </a>
+  <a
+    href="/questoes"
+    class="btn btn-primary"
+    style="
+      padding: 18px 36px;
+      border-radius: 50px;
+      text-decoration: none;
+      font-size: 1.1rem;
+      box-shadow: 0 10px 15px -3px rgba(0, 168, 232, 0.3);
+      background: var(--secondary-color);
+      min-width: 250px;
+    "
+  >
+    📝 Praticar Questões
+  </a>
+</div>
+
+<%- include('partials/footer') %>

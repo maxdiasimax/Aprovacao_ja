@@ -1,0 +1,198 @@
+<%- include('partials/header') %>
+
+<style>
+    .param-nav-item {
+        padding: 10px 15px;
+        border-radius: 6px;
+        text-decoration: none;
+        color: var(--text-color);
+        background: transparent;
+        font-weight: 400;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+    }
+
+    .param-nav-item:hover {
+        background: #f8fafc;
+        color: var(--primary-color);
+    }
+
+    .param-nav-item.active {
+        color: var(--primary-color);
+        background: #f1f5f9;
+        font-weight: 600;
+    }
+</style>
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+    <h2>Parâmetros do Sistema</h2>
+    <div style="display: flex; gap: 10px;">
+        <button onclick="openModal()" class="btn btn-primary" style="background: var(--success); border-color: var(--success);">+ Novo Registro</button>
+        <button onclick="document.getElementById('modal-import').style.display='flex'" class="btn btn-primary" style="flex: none;">Importar Excel</button>
+    </div>
+</div>
+
+<!-- Alertas -->
+<div id="alert-container" style="margin-bottom: 20px;">
+    <% if (typeof query !== 'undefined' && query.msg) { %>
+        <% if (query.msg === 'save_success') { %>
+            <div class="alert" style="background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+                <strong style="color: #15803d;">Atenção</strong>: Registro salvo com sucesso!
+            </div>
+        <% } else if (query.msg === 'edit_success') { %>
+            <div class="alert" style="background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+                <strong style="color: #1d4ed8;">Atenção</strong>: Registro editado com sucesso!
+            </div>
+        <% } else if (query.msg === 'delete_success') { %>
+            <div class="alert" style="background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+                <strong style="color: #b91c1c;">Atenção</strong>: Registro excluído com sucesso!
+            </div>
+        <% } else if (query.msg === 'import_success') { %>
+            <div class="alert" style="background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+                <strong style="color: #15803d;">Atenção</strong>: Importação realizada com sucesso!
+            </div>
+        <% } %>
+        <script>
+            setTimeout(() => {
+                const alerts = document.querySelectorAll('.alert');
+                alerts.forEach(a => a.style.display = 'none');
+                window.history.replaceState({}, document.title, window.location.pathname + '?tipo=<%= tipo %>');
+            }, 5000);
+        </script>
+    <% } %>
+</div>
+
+<div style="display: grid; grid-template-columns: 250px 1fr; gap: 20px;">
+    <!-- Selector Sidebar -->
+    <div class="card" style="padding: 10px;">
+        <h4 style="margin: 10px; font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase;">Tipo de Parâmetro</h4>
+        <nav style="display: flex; flex-direction: column; gap: 5px; margin-top: 10px;">
+            <% 
+            const tipos = [
+                { id: 'disciplinas', label: 'Disciplina' },
+                { id: 'bancas', label: 'Banca' },
+                { id: 'instituicoes', label: 'Instituição' },
+                { id: 'cargos', label: 'Cargo' },
+                { id: 'anos', label: 'Ano' },
+                { id: 'carreiras', label: 'Carreira' },
+                { id: 'areas_formacao', label: 'Área de Formação' },
+                { id: 'escolaridades', label: 'Escolaridade' },
+                { id: 'dificuldades', label: 'Dificuldade' }
+            ];
+            %>
+            
+            <% tipos.forEach(t => { %>
+                <a href="/admin/parametros?tipo=<%= t.id %>" class="param-nav-item <%= tipo === t.id ? 'active' : '' %>">
+                    <%= t.label %>
+                </a>
+            <% }) %>
+        </nav>
+    </div>
+
+    <!-- Data Grid -->
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="margin: 0;"><%= tipos.find(t => t.id === tipo).label %>s</h3>
+            <a href="/admin/parametros/template/<%= tipo %>" style="font-size: 0.8rem; color: var(--primary-color); text-decoration: none; font-weight: 600;">Baixar Planilha Modelo</a>
+        </div>
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                <thead>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <th style="padding: 12px; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Nome</th>
+                        <th style="padding: 12px; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; text-align: right;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if (itens.length === 0) { %>
+                        <tr>
+                            <td colspan="2" style="padding: 20px; text-align: center; color: var(--text-muted);">Nenhum registro encontrado.</td>
+                        </tr>
+                    <% } %>
+                    <% itens.forEach(item => { %>
+                        <tr style="border-bottom: 1px solid #f8fafc;">
+                            <td style="padding: 12px; font-weight: 500;"><%= item.nome %></td>
+                            <td style="padding: 12px; text-align: right; white-space: nowrap;">
+                                <button onclick="openModal({ id: '<%= item.id %>', nome: '<%= item.nome %>' })" class="btn" style="padding: 6px 12px; font-size: 0.75rem; background: #f1f5f9; color: var(--primary-color);">Editar</button>
+                                <form action="/admin/parametros/excluir/<%= item.id %>" method="POST" style="display: inline;" onsubmit="return confirmDelete()">
+                                    <input type="hidden" name="tipo" value="<%= tipo %>">
+                                    <button type="submit" class="btn" style="padding: 6px 12px; font-size: 0.75rem; background: #fff1f2; color: var(--danger);">Excluir</button>
+                                </form>
+                            </td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Salvar/Editar -->
+<div id="modal-param" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; padding: 20px;">
+    <div class="card" style="max-width: 500px; width: 100%;">
+        <h3 id="modal-title">Novo Registro</h3>
+        <form action="/admin/parametros/salvar" method="POST" style="margin-top: 20px;">
+            <input type="hidden" name="id" id="p-id">
+            <input type="hidden" name="tipo" value="<%= tipo %>">
+            
+            <div class="form-group">
+                <label>Nome do Parâmetro</label>
+                <input type="text" name="nome" id="p-nome" class="form-control" placeholder="Ex: <%= tipo === 'anos' ? '2024' : 'Direito Civil' %>" required>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 30px; justify-content: flex-end;">
+                <button type="button" onclick="closeModal()" class="btn" style="background: #e2e8f0; color: #64748b;">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Importar -->
+<div id="modal-import" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; padding: 20px;">
+    <div class="card" style="max-width: 500px; width: 100%;">
+        <h3>Importar Parâmetros</h3>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 20px;">Selecione uma planilha .xlsx com o formato correto.</p>
+        <form action="/admin/parametros/importar" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="tipo" value="<%= tipo %>">
+            <div class="form-group">
+                <input type="file" name="planilha" accept=".xlsx" class="form-control" required>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end;">
+                <button type="button" onclick="document.getElementById('modal-import').style.display='none'" class="btn" style="background: #e2e8f0; color: #64748b;">Sair</button>
+                <button type="submit" class="btn btn-primary">Iniciar Importação</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openModal(data = null) {
+        const modal = document.getElementById('modal-param');
+        const title = document.getElementById('modal-title');
+        const form = modal.querySelector('form');
+        
+        if (data) {
+            title.innerText = 'Editar Registro';
+            document.getElementById('p-id').value = data.id;
+            document.getElementById('p-nome').value = data.nome;
+        } else {
+            title.innerText = 'Novo Registro';
+            form.reset();
+            document.getElementById('p-id').value = '';
+        }
+        
+        modal.style.display = 'flex';
+        document.getElementById('p-nome').focus();
+    }
+
+    function closeModal() {
+        document.getElementById('modal-param').style.display = 'none';
+    }
+
+    function confirmDelete() {
+        return confirm("Atenção\n\nDeseja excluir o registro?");
+    }
+</script>
+
+<%- include('partials/footer') %>

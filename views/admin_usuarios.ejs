@@ -1,0 +1,202 @@
+<%- include('partials/header') %>
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+    <h2>Gestão de Usuários</h2>
+    <div style="display: flex; gap: 10px;">
+        <button onclick="document.getElementById('modal-novo').style.display='flex'" class="btn btn-primary" style="flex: none;">+ Novo Aluno</button>
+    </div>
+</div>
+
+<!-- Alerts -->
+<% if (typeof msg !== 'undefined' && msg) { %>
+    <div id="alert-box" style="padding: 15px; margin-bottom: 20px; border-radius: 8px; font-weight: 500; display: flex; align-items: center; justify-content: space-between;">
+        <span>
+            <% if (msg === 'save_success') { %>
+                <i class="fas fa-check-circle" style="margin-right: 8px;"></i> Registro salvo com sucesso!
+            <% } else if (msg === 'edit_success') { %>
+                <i class="fas fa-info-circle" style="margin-right: 8px;"></i> Registro editado com sucesso!
+            <% } else if (msg === 'inactive_success') { %>
+                <i class="fas fa-exclamation-circle" style="margin-right: 8px;"></i> Registro inativado com sucesso!
+            <% } else if (msg === 'error') { %>
+                <i class="fas fa-times-circle" style="margin-right: 8px;"></i> Erro ao processar solicitação.
+            <% } %>
+        </span>
+        <button onclick="document.getElementById('alert-box').remove()" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; opacity: 0.6;">&times;</button>
+    </div>
+    <script>
+        // Set colors based on message type
+        const alertBox = document.getElementById('alert-box');
+        const msgType = "<%= msg %>";
+        if (msgType === 'save_success') {
+            alertBox.style.backgroundColor = '#d1fae5';
+            alertBox.style.color = '#065f46';
+            alertBox.style.border = '1px solid #a7f3d0';
+        } else if (msgType === 'edit_success') {
+            alertBox.style.backgroundColor = '#dbeafe';
+            alertBox.style.color = '#1e40af';
+            alertBox.style.border = '1px solid #bfdbfe';
+        } else if (msgType === 'inactive_success') {
+            alertBox.style.backgroundColor = '#fee2e2';
+            alertBox.style.color = '#991b1b';
+            alertBox.style.border = '1px solid #fecaca';
+        } else {
+            alertBox.style.backgroundColor = '#f3f4f6';
+            alertBox.style.color = '#1f2937';
+        }
+        
+        // Auto hide after 5 seconds
+        setTimeout(() => {
+            if(alertBox) alertBox.remove();
+        }, 5000);
+    </script>
+<% } %>
+
+<div class="card" style="overflow-x: auto;">
+    <table style="width: 100%; border-collapse: collapse; text-align: left;">
+        <thead>
+            <tr style="border-bottom: 1px solid var(--border);">
+                <th style="padding: 12px; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Nome</th>
+                <th style="padding: 12px; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Usuário</th>
+                <th style="padding: 12px; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Perfil</th>
+                <th style="padding: 12px; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Status</th>
+                <th style="padding: 12px; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Vencimento</th>
+                <th style="padding: 12px; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% users.forEach(u => { %>
+                <tr style="border-bottom: 1px solid #f8fafc;">
+                    <td style="padding: 12px; font-weight: 500;"><%= u.nome %></td>
+                    <td style="padding: 12px;"><%= u.usuario %></td>
+                    <td style="padding: 12px;"><span class="badge-admin" style="background: <%= u.perfil === 'Admin' ? 'var(--primary-color)' : '#94a3b8' %>;"><%= u.perfil %></span></td>
+                    <td style="padding: 12px;"><span style="color: <%= u.status === 'Ativo' ? 'var(--success)' : 'var(--danger)' %>; font-weight: 600;"><%= u.status %></span></td>
+                    <td style="padding: 12px; font-size: 0.85rem;"><%= u.vencimento || 'N/A' %></td>
+                    <td style="padding: 12px; display: flex; gap: 8px;">
+                        <button onclick='openEditModal(<%- JSON.stringify(u).replace(/'/g, "&#39;") %>)' class="btn" style="padding: 4px 8px; font-size: 0.8rem; background: var(--secondary-color); color: white;">Editar</button>
+                        <% if (u.status === 'Ativo') { %>
+                            <form action="/admin/usuarios/inativar/<%= u.id %>" method="POST" onsubmit="return confirm('Deseja realmente inativar este usuário?');" style="display:inline;">
+                                <button type="submit" class="btn" style="padding: 4px 8px; font-size: 0.8rem; background: #ef4444; color: white;">Inativar</button>
+                            </form>
+                        <% } else { %>
+                            <button disabled class="btn" style="padding: 4px 8px; font-size: 0.8rem; background: #cbd5e1; color: white; cursor: not-allowed;">Inativo</button>
+                        <% } %>
+                    </td>
+                </tr>
+            <% }) %>
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal Novo Usuário -->
+<div id="modal-novo" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; padding: 20px;">
+    <div class="card" style="max-width: 500px; width: 100%;">
+        <h3>Cadastrar Novo Aluno</h3>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 20px;">Definição automática de validade por 30 dias.</p>
+        <form action="/admin/usuarios/novo" method="POST">
+            <div class="form-group">
+                <label>Nome Completo</label>
+                <input type="text" name="nome" class="form-control" required>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label>Usuário</label>
+                    <input type="text" name="usuario" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Senha</label>
+                    <input type="password" name="senha" class="form-control" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Telefone</label>
+                <input type="text" name="telefone" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>Perfil</label>
+                <select name="perfil" class="form-control">
+                    <option value="Aluno">Aluno</option>
+                    <option value="Admin">Admin</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="button" onclick="document.getElementById('modal-novo').style.display='none'" class="btn" style="background: #e2e8f0; color: #64748b;">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar Aluno</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Editar Usuário -->
+<div id="modal-editar" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; padding: 20px;">
+    <div class="card" style="max-width: 500px; width: 100%;">
+        <h3>Editar Usuário</h3>
+        <form action="/admin/usuarios/editar" method="POST">
+            <input type="hidden" name="id" id="edit-id">
+            <div class="form-group">
+                <label>Nome Completo</label>
+                <input type="text" name="nome" id="edit-nome" class="form-control" required>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label>Usuário</label>
+                    <input type="text" name="usuario" id="edit-usuario" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Nova Senha (Opcional)</label>
+                    <input type="password" name="senha" class="form-control" placeholder="Deixe em branco p/ manter">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Telefone</label>
+                <input type="text" name="telefone" id="edit-telefone" class="form-control">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label>Perfil</label>
+                    <select name="perfil" id="edit-perfil" class="form-control">
+                        <option value="Aluno">Aluno</option>
+                        <option value="Admin">Admin</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select name="status" id="edit-status" class="form-control">
+                        <option value="Ativo">Ativo</option>
+                        <option value="Inativo">Inativo</option>
+                    </select>
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="button" onclick="document.getElementById('modal-editar').style.display='none'" class="btn" style="background: #e2e8f0; color: #64748b;">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openEditModal(user) {
+        document.getElementById('edit-id').value = user.id;
+        document.getElementById('edit-nome').value = user.nome;
+        document.getElementById('edit-usuario').value = user.usuario;
+        document.getElementById('edit-telefone').value = user.telefone || '';
+        document.getElementById('edit-perfil').value = user.perfil;
+        document.getElementById('edit-status').value = user.status;
+        
+        document.getElementById('modal-editar').style.display = 'flex';
+    }
+    
+    // Close modals on outside click
+    window.onclick = function(event) {
+        const modalNovo = document.getElementById('modal-novo');
+        const modalEdit = document.getElementById('modal-editar');
+        if (event.target == modalNovo) {
+            modalNovo.style.display = "none";
+        }
+        if (event.target == modalEdit) {
+            modalEdit.style.display = "none";
+        }
+    }
+</script>
+
+<%- include('partials/footer') %>

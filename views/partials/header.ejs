@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aprovação Já</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <header>
+      <div class="logo">APROVAÇÃO JÁ</div>
+      <div class="user-info">
+        <% if (user) { %>
+        <span class="badge-admin"><%= user.perfil %></span>
+        <strong><%= user.nome %></strong>
+        <a
+          href="/logout"
+          style="font-size: 0.8rem; color: var(--danger); text-decoration: none"
+          >Sair</a
+        >
+        <% } %>
+      </div>
+    </header>
+    <div class="main-wrapper">
+      <nav class="sidebar">
+        <a href="/dashboard" class="nav-link">Início</a>
+        <a href="/flashcards" class="nav-link">FlashCards</a>
+        <a href="/questoes" class="nav-link">Questões</a>
+        <a href="/simulados" class="nav-link">Simulados</a>
+        <% if (user && user.perfil === 'Admin') { %>
+        <div
+          style="
+            margin: 20px 0 10px 12px;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-weight: bold;
+            text-transform: uppercase;
+          "
+        >
+          Administração
+        </div>
+        <a href="/admin/usuarios" class="nav-link">Usuários</a>
+        <a href="/admin/questoes" class="nav-link">Questões</a>
+        <a href="/admin/parametros" class="nav-link">Parâmetros</a>
+        <% } %>
+      </nav>
+      <main class="content">

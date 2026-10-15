@@ -1,0 +1,270 @@
+<%- include('partials/header') %>
+
+<div style="display: flex; gap: 24px; align-items: flex-start;">
+    <!-- Sidebar de Questões -->
+    <div style="width: 250px; flex-shrink: 0; position: sticky; top: 20px;">
+        <div class="card" style="padding: 15px;">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 5px;">Tempo Restante</div>
+                <div id="timer" style="font-size: 2rem; font-weight: 800; color: var(--primary-color);">00:00:00</div>
+            </div>
+            
+            <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); margin-bottom: 15px; border-top: 1px solid var(--border); padding-top: 15px;">
+                Questões
+            </div>
+            
+            <div id="questoes-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;">
+                <% simulado.questoes.forEach((q, index) => { %>
+                    <div id="nav-q-<%= index %>" class="nav-dot" onclick="goToQuestion(<%= index %>)">
+                        <%= index + 1 %>
+                    </div>
+                <% }) %>
+            </div>
+
+            <div style="margin-top: 25px;">
+                <button onclick="confirmarFinalizar()" class="btn btn-danger" style="width: 100%; padding: 12px; font-weight: 700;">FINALIZAR PROVA</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interface da Questão -->
+    <div style="flex: 1;">
+        <div id="questao-container" class="card" style="min-height: 400px;">
+            <div id="questao-meta" style="margin-bottom: 20px; font-size: 0.8rem; color: var(--secondary-color); font-weight: 600; display: flex; justify-content: space-between;">
+                <span id="disciplina-banca"></span>
+                <span>Questão <span id="current-index-display">1</span> de <%= simulado.questoes.length %></span>
+            </div>
+            
+            <div id="pergunta-text" style="font-size: 1.1rem; margin-bottom: 30px; line-height: 1.6; font-weight: 500;">
+            </div>
+
+            <div id="opcoes-container" style="display: flex; flex-direction: column; gap: 12px;">
+            </div>
+
+            <div style="display: flex; justify-content: space-between; margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border);">
+                <button id="btn-prev" onclick="prevQuestion()" class="btn btn-secondary" style="padding: 10px 20px;">← Anterior</button>
+                <button id="btn-next" onclick="nextQuestion()" class="btn btn-primary" style="padding: 10px 30px;">Próxima →</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .nav-dot {
+        width: 35px;
+        height: 35px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: white;
+    }
+    .nav-dot:hover {
+        background: #f1f5f9;
+        border-color: var(--secondary-color);
+    }
+    .nav-dot.active {
+        background: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+        box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);
+    }
+    .nav-dot.answered {
+        background: #e2e8f0;
+        color: var(--text-main);
+        border-color: #cbd5e1;
+    }
+
+    .opcao {
+        padding: 16px; 
+        border: 1px solid var(--border); 
+        border-radius: 12px; 
+        cursor: pointer; 
+        transition: all 0.2s;
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        background: white;
+    }
+    .opcao:hover {
+        background-color: #f8fafc;
+        border-color: var(--secondary-color);
+    }
+    .opcao.selected {
+        border-color: var(--primary-color);
+        background-color: #eff6ff;
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+    }
+    .opcao-label {
+        background: #f1f5f9; 
+        width: 28px; 
+        height: 28px; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        border-radius: 50%; 
+        font-weight: bold; 
+        font-size: 0.8rem;
+        flex-shrink: 0;
+    }
+    .opcao.selected .opcao-label {
+        background: var(--primary-color);
+        color: white;
+    }
+</style>
+
+<script>
+    const questoes = <%- JSON.stringify(simulado.questoes) %>;
+    const config = <%- JSON.stringify(simulado.config) %>;
+    let respostas = {};
+    let currentIndex = 0;
+    let secondsSpent = 0;
+    let timerInterval;
+
+    // Timer logic
+    const duration = parseInt(config.tempo);
+    let remainingSeconds = duration * 60;
+
+    function startTimer() {
+        if (duration === 0) {
+            document.getElementById('timer').innerText = "ILIMITADO";
+            timerInterval = setInterval(() => {
+                secondsSpent++;
+            }, 1000);
+            return;
+        }
+
+        timerInterval = setInterval(() => {
+            remainingSeconds--;
+            secondsSpent++;
+            
+            if (remainingSeconds <= 0) {
+                clearInterval(timerInterval);
+                finalizarProva(true);
+            }
+
+            const h = Math.floor(remainingSeconds / 3600);
+            const m = Math.floor((remainingSeconds % 3600) / 60);
+            const s = remainingSeconds % 60;
+            document.getElementById('timer').innerText = 
+                `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            
+            if (remainingSeconds < 300) {
+                document.getElementById('timer').style.color = 'var(--danger)';
+            }
+        }, 1000);
+    }
+
+    function renderQuestion() {
+        const q = questoes[currentIndex];
+        document.getElementById('current-index-display').innerText = currentIndex + 1;
+        document.getElementById('disciplina-banca').innerText = `${q.disciplina} | ${q.banca} (${q.ano})`;
+        document.getElementById('pergunta-text').innerText = q.pergunta;
+
+        const optionsContainer = document.getElementById('opcoes-container');
+        optionsContainer.innerHTML = '';
+
+        if (q.opcoes) {
+            Object.entries(q.opcoes).forEach(([label, text]) => {
+                if (!text) return;
+                const div = document.createElement('div');
+                div.className = `opcao ${respostas[q.id] === label ? 'selected' : ''}`;
+                div.onclick = () => selectOption(q.id, label);
+                div.innerHTML = `
+                    <span class="opcao-label">${label}</span>
+                    <div style="font-size: 0.95rem;">${text}</div>
+                `;
+                optionsContainer.appendChild(div);
+            });
+        }
+
+        // Update nav-dots
+        document.querySelectorAll('.nav-dot').forEach((dot, idx) => {
+            dot.classList.remove('active');
+            if (idx === currentIndex) dot.classList.add('active');
+            if (respostas[questoes[idx].id]) dot.classList.add('answered');
+        });
+
+        // Update buttons
+        document.getElementById('btn-prev').disabled = currentIndex === 0;
+        document.getElementById('btn-next').innerText = currentIndex === questoes.length - 1 ? 'Finalizar' : 'Próxima →';
+    }
+
+    function selectOption(qId, label) {
+        respostas[qId] = label;
+        renderQuestion();
+    }
+
+    function nextQuestion() {
+        if (currentIndex < questoes.length - 1) {
+            currentIndex++;
+            renderQuestion();
+        } else {
+            confirmarFinalizar();
+        }
+    }
+
+    function prevQuestion() {
+        if (currentIndex > 0) {
+            currentIndex--;
+            renderQuestion();
+        }
+    }
+
+    function goToQuestion(index) {
+        currentIndex = index;
+        renderQuestion();
+    }
+
+    function confirmarFinalizar() {
+        const total = questoes.length;
+        const respondidas = Object.keys(respostas).length;
+        
+        if (respondidas < total) {
+            if (confirm(`Você respondeu ${respondidas} de ${total} questões. Deseja realmente finalizar?`)) {
+                finalizarProva();
+            }
+        } else {
+            if (confirm("Deseja finalizar o simulado e ver seu resultado?")) {
+                finalizarProva();
+            }
+        }
+    }
+
+    async function finalizarProva(isTimeUp = false) {
+        clearInterval(timerInterval);
+        if (isTimeUp) alert("Tempo esgotado! Seu simulado será finalizado automaticamente.");
+
+        try {
+            const response = await fetch('/simulados/finalizar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    respostas, 
+                    tempo_gasto: secondsSpent 
+                })
+            });
+            const data = await response.json();
+            if (data.success) {
+                window.location.href = `/simulados/resultado/${data.id}`;
+            } else {
+                alert("Erro ao salvar simulado. Tente novamente.");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Erro de conexão. Tente novamente.");
+        }
+    }
+
+    window.onload = () => {
+        startTimer();
+        renderQuestion();
+    };
+</script>
+
+<%- include('partials/footer') %>

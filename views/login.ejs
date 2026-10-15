@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - Aprovação Já</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="login-bg">
+    <div class="login-container">
+      <div class="card login-card">
+        <div style="text-align: center; margin-bottom: 30px">
+          <h1 class="logo" style="font-size: 2rem">APROVAÇÃO JÁ</h1>
+          <p style="color: var(--text-muted)">
+            Estude com inteligência e conquiste sua vaga.
+          </p>
+        </div>
+
+        <% if (error) { %>
+        <div
+          style="
+            background: #ffebeb;
+            color: var(--danger);
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 0.875rem;
+          "
+        >
+          <%= error === 'invalid' ? 'Usuário ou senha incorretos.' : 'Sua sessão expirou ou conta inativa.' %>
+        </div>
+        <% } %>
+
+        <form action="/login" method="POST">
+          <div class="form-group">
+            <label>Usuário</label>
+            <input
+              type="text"
+              name="usuario"
+              class="form-control"
+              placeholder="Seu usuário"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label>Senha</label>
+            <input
+              type="password"
+              name="senha"
+              class="form-control"
+              placeholder="••••••••"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            class="btn btn-primary"
+            style="width: 100%; margin-top: 10px; padding: 14px"
+          >
+            Entrar no Sistema
+          </button>
+        </form>
+      </div>
+    </div>
+  </body>
+</html>

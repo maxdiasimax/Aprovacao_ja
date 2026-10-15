@@ -1,0 +1,363 @@
+<%- include('partials/header') %>
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; gap: 10px; flex-wrap: wrap;">
+    <h2>Banco de Questões</h2>
+    <div style="display: flex; gap: 10px;">
+        <button onclick="openModal()" class="btn btn-primary" style="background: var(--success); border-color: var(--success);">+ Nova Questão</button>
+        <button onclick="document.getElementById('modal-import').style.display='flex'" class="btn btn-primary" style="flex: none;">Importar Excel</button>
+    </div>
+</div>
+
+<!-- Alertas -->
+<div id="alert-container" style="margin-bottom: 20px;">
+    <% if (typeof query !== 'undefined' && query.msg) { %>
+        <% if (query.msg === 'save_success') { %>
+            <div class="alert" style="background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+                <strong style="color: #15803d;">Atenção</strong>: Registro salvo com sucesso!
+            </div>
+        <% } else if (query.msg === 'edit_success') { %>
+            <div class="alert" style="background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+                <strong style="color: #1d4ed8;">Atenção</strong>: Registro editado com sucesso!
+            </div>
+        <% } else if (query.msg === 'delete_success') { %>
+            <div class="alert" style="background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+                <strong style="color: #b91c1c;">Atenção</strong>: Registro excluído com sucesso!
+            </div>
+        <% } else if (query.msg === 'import_success') { %>
+            <div class="alert" style="background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+                <strong style="color: #15803d;">Atenção</strong>: Importação realizada com sucesso!
+            </div>
+        <% } else if (query.msg === 'import_summary') { %>
+            <div class="alert" style="background: #e0f2fe; color: #075985; border: 1px solid #bae6fd; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+                <h4 style="margin: 0 0 5px 0; font-size: 1rem;">Resumo da Importação</h4>
+                <ul style="margin: 0; padding-left: 20px;">
+                    <li>Novas questões importadas: <strong><%= query.imported || 0 %></strong></li>
+                    <li>Ignoradas por duplicidade: <strong><%= query.skipped || 0 %></strong></li>
+                </ul>
+            </div>
+        <% } %>
+        <script>
+            setTimeout(() => {
+                const alerts = document.querySelectorAll('.alert');
+                alerts.forEach(a => a.style.display = 'none');
+                // Limpar URL sem recarregar
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }, 5000);
+        </script>
+    <% } %>
+</div>
+
+<div class="card">
+    <div style="display: flex; gap: 20px; align-items: center;">
+        <div style="flex: 1;">
+            <p style="font-size: 0.875rem; color: var(--text-muted);">Total de questões carregadas: <strong><%= questoes.length %></strong></p>
+        </div>
+        <div>
+            <a href="/create_template" style="font-size: 0.8rem; color: var(--primary-color); text-decoration: none; font-weight: 600;">Baixar Planilha Modelo</a>
+        </div>
+    </div>
+    <div style="margin-top: 20px; overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <th style="padding: 12px; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Disciplina</th>
+                    <th style="padding: 12px; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Banca</th>
+                    <th style="padding: 12px; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Tipo</th>
+                    <th style="padding: 12px; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Pergunta</th>
+                    <th style="padding: 12px; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Opções</th>
+                    <th style="padding: 12px; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; text-align: right;">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% questoes.forEach(q => { 
+                    const opcoes = JSON.parse(q.opcoes_json || '{}');
+                %>
+                    <tr style="border-bottom: 1px solid #f8fafc;">
+                        <td style="padding: 12px; font-weight: 600; font-size: 0.8rem;"><%= q.disciplina %></td>
+                        <td style="padding: 12px; font-size: 0.8rem;"><%= q.banca %></td>
+                        <td style="padding: 12px; font-size: 0.8rem;">
+                            <% 
+                                let tipoFmt = q.tipo;
+                                if (q.tipo === 'MultiplaEscolha') tipoFmt = 'Múltipla Escolha';
+                                if (q.tipo === 'CertoErrado') tipoFmt = 'Certo / Errado';
+                            %>
+                            <%= tipoFmt %>
+                        </td>
+                        <td style="padding: 12px; font-size: 0.85rem; max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="<%= q.pergunta %>"><%= q.pergunta %></td>
+                        <td style="padding: 12px; font-size: 0.75rem; color: var(--text-muted);">
+                            <% if (q.tipo === 'MultiplaEscolha') { %>
+                                <strong>A:</strong> <%= String(opcoes.A || '').substring(0, 15) %><%= String(opcoes.A || '').length > 15 ? '...' : '' %> | 
+                                <strong>B:</strong> <%= String(opcoes.B || '').substring(0, 15) %><%= String(opcoes.B || '').length > 15 ? '...' : '' %> | 
+                                <strong>C:</strong> <%= String(opcoes.C || '').substring(0, 15) %><%= String(opcoes.C || '').length > 15 ? '...' : '' %> | 
+                                <strong>D:</strong> <%= String(opcoes.D || '').substring(0, 15) %><%= String(opcoes.D || '').length > 15 ? '...' : '' %>
+                                <% if (opcoes.E) { %> | <strong>E:</strong> <%= String(opcoes.E || '').substring(0, 15) %><%= String(opcoes.E || '').length > 15 ? '...' : '' %><% } %>
+                            <% } else if (q.tipo === 'CertoErrado') { %>
+                                <%= (opcoes.Certo || 'Certo') %> / <%= (opcoes.Errado || 'Errado') %>
+                            <% } else if (q.tipo === 'Flashcard') { %>
+                                <span title="<%= q.resposta_detalhada %>"><em>Verso:</em> <%= String(q.resposta_detalhada || '').substring(0, 30) %>...</span>
+                            <% } %>
+                        </td>
+                        <td style="padding: 12px; text-align: right; white-space: nowrap;">
+                            <button data-q="<%= JSON.stringify(q) %>" onclick="openModal(JSON.parse(this.getAttribute('data-q')))" class="btn" style="padding: 6px 12px; font-size: 0.75rem; background: #f1f5f9; color: var(--primary-color);">Editar</button>
+                            <form action="/admin/questoes/excluir/<%= q.id %>" method="POST" style="display: inline;" onsubmit="return confirmDelete()">
+                                <button type="submit" class="btn" style="padding: 6px 12px; font-size: 0.75rem; background: #fff1f2; color: var(--danger);">Excluir</button>
+                            </form>
+                        </td>
+                    </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Controles de Paginação -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding: 15px; background: white; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+        
+        <!-- Seletor de Limite -->
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <label style="font-size: 0.9rem; color: var(--text-muted);">Itens por página:</label>
+            <select onchange="window.location.href='?page=1&limit=' + this.value" style="padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border);">
+                <% [10, 20, 30, 40, 50].forEach(opt => { %>
+                    <option value="<%= opt %>" <%= limit === opt ? 'selected' : '' %>><%= opt %></option>
+                <% }) %>
+            </select>
+        </div>
+
+        <!-- Navegação -->
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <a href="?page=<%= currentPage - 1 %>&limit=<%= limit %>" 
+               class="btn btn-secondary <%= currentPage <= 1 ? 'disabled' : '' %>"
+               style="<%= currentPage <= 1 ? 'pointer-events: none; opacity: 0.5;' : '' %> padding: 8px 16px; font-size: 0.9rem;">
+                Anterior
+            </a>
+            
+            <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-main);">
+                Página <%= currentPage %> de <%= totalPages || 1 %> 
+                <span style="font-weight: normal; color: var(--text-muted); font-size: 0.8rem;">(Total: <%= totalItems %>)</span>
+            </span>
+
+            <a href="?page=<%= currentPage + 1 %>&limit=<%= limit %>" 
+               class="btn btn-secondary <%= currentPage >= totalPages ? 'disabled' : '' %>"
+               style="<%= currentPage >= totalPages ? 'pointer-events: none; opacity: 0.5;' : '' %> padding: 8px 16px; font-size: 0.9rem;">
+                Próxima
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Salvar/Editar -->
+<div id="modal-questao" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; padding: 20px;">
+    <div class="card" style="max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto;">
+        <h3 id="modal-title">Nova Questão</h3>
+        <form action="/admin/questoes/salvar" method="POST" style="margin-top: 20px;">
+            <input type="hidden" name="id" id="q-id">
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label>Disciplina</label>
+                    <select name="disciplina" id="q-disciplina" class="form-control" required>
+                        <option value="">Selecione...</option>
+                        <% disciplinas.forEach(d => { %>
+                            <option value="<%= d.nome %>"><%= d.nome %></option>
+                        <% }) %>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Banca</label>
+                    <select name="banca" id="q-banca" class="form-control">
+                        <option value="">Selecione...</option>
+                        <% bancas.forEach(b => { %>
+                            <option value="<%= b.nome %>"><%= b.nome %></option>
+                        <% }) %>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Ano</label>
+                    <input type="number" name="ano" id="q-ano" class="form-control" placeholder="2024">
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label>Tipo de Questão</label>
+                    <select name="tipo" id="q-tipo" class="form-control" onchange="toggleOptions()" required>
+                        <option value="CertoErrado">Certo / Errado</option>
+                        <option value="Flashcard">Flashcard</option>
+                        <option value="MultiplaEscolha">Múltipla Escolha</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Resposta Correta</label>
+                    <select name="resposta_correta" id="q-resposta_correta" class="form-control">
+                        <option value="">Selecione...</option>
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="C">C</option>
+                        <option value="D">D</option>
+                        <option value="E">E</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Pergunta (Enunciado)</label>
+                <textarea name="pergunta" id="q-pergunta" class="form-control" style="min-height: 100px;" required></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Explicação (Resposta Detalhada)</label>
+                <textarea name="resposta_detalhada" id="q-resposta_detalhada" class="form-control" style="min-height: 80px;"></textarea>
+            </div>
+
+            <div id="options-multipla" style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 20px;">
+                <h4 style="margin-bottom: 15px; font-size: 0.9rem;">Alternativas</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>Opção A</label>
+                        <input type="text" name="opcoes[A]" id="q-opt-A" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Opção B</label>
+                        <input type="text" name="opcoes[B]" id="q-opt-B" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Opção C</label>
+                        <input type="text" name="opcoes[C]" id="q-opt-C" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Opção D</label>
+                        <input type="text" name="opcoes[D]" id="q-opt-D" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Opção E (Opcional)</label>
+                        <input type="text" name="opcoes[E]" id="q-opt-E" class="form-control">
+                    </div>
+                </div>
+            </div>
+
+            <div id="options-certoerrado" style="display: none; margin-top: 20px; border-top: 1px solid var(--border); padding-top: 20px;">
+                <h4 style="margin-bottom: 15px; font-size: 0.9rem;">Opções</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>Opção 1</label>
+                        <input type="text" name="opcoes[Certo]" id="q-opt-Certo" class="form-control" value="Certo">
+                    </div>
+                    <div class="form-group">
+                        <label>Opção 2</label>
+                        <input type="text" name="opcoes[Errado]" id="q-opt-Errado" class="form-control" value="Errado">
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 30px; justify-content: flex-end;">
+                <button type="button" onclick="closeModal()" class="btn" style="background: #e2e8f0; color: #64748b;">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar Questão</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Importar -->
+<div id="modal-import" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; padding: 20px;">
+    <div class="card" style="max-width: 500px; width: 100%;">
+        <h3>Importar Questões</h3>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 20px;">Selecione uma planilha .xlsx com o formato correto.</p>
+        <form action="/admin/questoes/importar" method="POST" enctype="multipart/form-data">
+            <div class="form-group">
+                <input type="file" name="planilha" accept=".xlsx" class="form-control" required>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="button" onclick="document.getElementById('modal-import').style.display='none'" class="btn" style="background: #e2e8f0; color: #64748b;">Sair</button>
+                <button type="submit" class="btn btn-primary">Iniciar Importação</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openModal(data = null) {
+        const modal = document.getElementById('modal-questao');
+        const title = document.getElementById('modal-title');
+        const form = modal.querySelector('form');
+        
+        if (data) {
+            title.innerText = 'Editar Questão';
+            document.getElementById('q-id').value = data.id;
+            document.getElementById('q-disciplina').value = data.disciplina || '';
+            document.getElementById('q-banca').value = data.banca || '';
+            document.getElementById('q-ano').value = data.ano || '';
+            document.getElementById('q-tipo').value = data.tipo;
+            
+            // Atualizar opções disponíveis antes de setar o valor
+            toggleOptions();
+
+            document.getElementById('q-pergunta').value = data.pergunta;
+            document.getElementById('q-resposta_detalhada').value = data.resposta_detalhada || '';
+            document.getElementById('q-resposta_correta').value = data.resposta_correta || '';
+            
+            const opcoes = JSON.parse(data.opcoes_json || '{}');
+            if (data.tipo === 'MultiplaEscolha') {
+                document.getElementById('q-opt-A').value = opcoes.A || '';
+                document.getElementById('q-opt-B').value = opcoes.B || '';
+                document.getElementById('q-opt-C').value = opcoes.C || '';
+                document.getElementById('q-opt-D').value = opcoes.D || '';
+                document.getElementById('q-opt-E').value = opcoes.E || '';
+            } else {
+                document.getElementById('q-opt-Certo').value = opcoes.Certo || 'Certo';
+                document.getElementById('q-opt-Errado').value = opcoes.Errado || 'Errado';
+            }
+        } else {
+            title.innerText = 'Nova Questão';
+            form.reset();
+            document.getElementById('q-id').value = '';
+            document.getElementById('q-resposta_correta').value = '';
+            toggleOptions(); // Resetar para default
+        }
+        
+        modal.style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('modal-questao').style.display = 'none';
+    }
+
+    function toggleOptions() {
+        const tipo = document.getElementById('q-tipo').value;
+        const divMultipla = document.getElementById('options-multipla');
+        const divCertoErrado = document.getElementById('options-certoerrado');
+        const selectCorreta = document.getElementById('q-resposta_correta');
+        
+        if (tipo === 'MultiplaEscolha') {
+            divMultipla.style.display = 'block';
+            divCertoErrado.style.display = 'none';
+            // Atualizar opções do select de resposta correta para A, B, C, D, E
+            selectCorreta.innerHTML = `
+                <option value="">Selecione...</option>
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+                <option value="D">D</option>
+                <option value="E">E</option>
+            `;
+        } else if (tipo === 'CertoErrado') {
+            divMultipla.style.display = 'none';
+            divCertoErrado.style.display = 'block';
+            // Atualizar opções do select de resposta correta para Certo, Errado
+            selectCorreta.innerHTML = `
+                <option value="">Selecione...</option>
+                <option value="Certo">Certo</option>
+                <option value="Errado">Errado</option>
+            `;
+        } else if (tipo === 'Flashcard') {
+            divMultipla.style.display = 'none';
+            divCertoErrado.style.display = 'none';
+            // Flashcard não usa resposta correta via select (usa a explicação como verso)
+            selectCorreta.innerHTML = `<option value="Flashcard" selected>N/A (Ver Explicação)</option>`;
+        }
+    }
+
+    function confirmDelete() {
+        return confirm("Atenção\n\nDeseja excluir o registro?");
+    }
+</script>
+
+<%- include('partials/footer') %>
